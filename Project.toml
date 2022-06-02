@@ -1,0 +1,13 @@
+name = "PeriodicGraphEquilibriumPlacement"
+uuid = "72a2d4b8-adbf-4c88-a101-42c807716bb0"
+authors = ["Lionel Zoubritzky <lionel.zoubritzky@gmail.com>"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
