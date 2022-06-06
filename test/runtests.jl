@@ -1,4 +1,4 @@
-using PeriodicGraphEquilibriumPlacement
+using PeriodicGraphEquilibriumPlacement, PeriodicGraphs, Graphs
 using Test
 
 function is_at_mean_position(g::PeriodicGraph{D}, poss, i) where D

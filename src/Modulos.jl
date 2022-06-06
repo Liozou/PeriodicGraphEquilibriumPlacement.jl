@@ -2,7 +2,7 @@
 
 module Modulos
 
-import Base: ==, +, -, *, inv, /, ^, hash, show, unsigned
+import Base: ==, +, -, *, inv, /, ^, hash, show, unsigned, Bool
 import Base.Checked: mul_with_overflow
 
 export Modulo
@@ -20,6 +20,7 @@ struct Modulo{p,T<:Integer} <: Real
 end
 
 (::Type{T})(x::Modulo) where {T<:Integer} = T(x.value)
+Bool(x::Modulo) = Bool(x.value) # disambiguation
 
 function hash(x::Modulo{p}, h::UInt64=UInt64(0)) where p
     hash(Integer(x), hash(p, h))
@@ -72,12 +73,6 @@ function *(x::Modulo{p,T1}, y::Modulo{p,T2}) where {p,T1,T2}
     r, flag = mul_with_overflow((Integer(x) % T), (Integer(y) % T))
     flag ? Modulo{p,T}(widemul(Integer(x), Integer(y))) : Modulo{p,T}(r)
 end
-
-
-# """
-# `is_invertible(x::Modulo)` determines if `x` is invertible.
-# """
-# is_invertible(x::Modulo{p}) where {p} = return p>1 && isone(gcd(Integer(x), p))
 
 @noinline __throw_notinvertible(x) = error(x, " is not invertible")
 inv(x::Modulo{1}) = __throw_notinvertible(x)
