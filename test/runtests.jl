@@ -29,7 +29,8 @@ end
 @testset "dixon_solve and rational_solve" begin
     for N in 1:5
         for n in 1:5
-            A = sparse(Int.(rand(Int8, n, n)))
+            _A = Int.(rand(Int8, n, n))
+            A = sparse(Int.(_A) .+ 300*LinearAlgebra.I(n)) # ensure the system is invertible
             Y = Int.(rand(Int8, n, N))
             result = dixon_solve(Val(N), A, Y)
             @test A*result == Y
