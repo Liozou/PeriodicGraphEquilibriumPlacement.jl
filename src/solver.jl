@@ -4,7 +4,7 @@ using .Modulos
 import Base.GMP: MPZ
 
 using Base: OneTo
-using LinearAlgebra: BlasInt, checknonsingular, LU, tril!, triu!, issuccess, norm, RowMaximum
+using LinearAlgebra: BlasInt, checknonsingular, LU, tril!, triu!, issuccess, norm
 using SparseArrays
 using SparseArrays: getcolptr
 
@@ -241,7 +241,14 @@ function linsolve!(F::LU, B::Matrix)
     return BB, true
 end
 
+"""
+    rational_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) where N
 
+Fallback solver for [`dixon_solve`](@ref) which performs an LU decomposition followed by
+forward and backward substitutions.
+
+In general, it is slower than [`dixon_solve`](@ref).
+"""
 function rational_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) where N
     B = rational_lu(A, false)
     if !issuccess(B)
@@ -249,7 +256,7 @@ function rational_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) w
     end
     Z, check = linsolve!(B, Rational{BigInt}.(Y))
     check || error("Singular exception on substitution. Please open an issue.")
-    return hcat(zeros(Rational{Int128}, N), adjoint(Rational{Int128}.(Z)))
+    return Rational{Int128}.(Z)
     # Rational{Int64} is not enough for tep for instance.
 end
 
@@ -340,10 +347,9 @@ function dixon_p(::Val{N}, A::SparseMatrixCSC{Int,Int}, C::LU{Modulo{p,Int32}}, 
     m = ceil(Int, 2*log(δ / (MathConstants.φ - 1))/log(p))
     # @assert m ≥ 1
     B = copy(Y)
-    typeofZ = Union{Matrix{Rational{Int64}},Matrix{Rational{Int128}},Matrix{Rational{BigInt}}}
-    Z::typeofZ = similar(Y, Rational{Int64})
+    Z::Union{Matrix{Rational{Int64}},Matrix{Rational{Int128}},Matrix{Rational{BigInt}}} = similar(Y, Rational{Int64})
     BB, check = linsolve!(C, B)
-    check || return Z', false
+    check || return Z, false
     x̄ = BigInt.(BB)
     X = copy(x̄)
     # @assert A * Modulo{p,Int32}.(X) == B
@@ -353,7 +359,7 @@ function dixon_p(::Val{N}, A::SparseMatrixCSC{Int,Int}, C::LU{Modulo{p,Int32}}, 
         MPZ.mul_si!(h, p)
         B .= (B .- A*Integer.(X)) .÷ p
         BB2, check2 = linsolve!(C, B)
-        check2 || return Z', false
+        check2 || return Z, false
         X .= Integer.(BB2)
         # @assert A * Modulo{p,Int32}.(X) == B
         @inbounds for j in eachindex(x̄)
@@ -377,7 +383,7 @@ function dixon_p(::Val{N}, A::SparseMatrixCSC{Int,Int}, C::LU{Modulo{p,Int32}}, 
     end
 
     # @assert eltype(Y).(A * big.(Z)) == Y
-    return Z', true
+    return Z, true
 end
 
 @static if VERSION < v"1.8-"
@@ -394,37 +400,31 @@ else
     }
 end
 
-const typeofZ = Union{Matrix{Rational{Int64}},Matrix{Rational{Int128}},Matrix{Rational{BigInt}}}
-
-
 function try_modulo(::Val{N}, A, Y, ::Type{Modulo{p,T}}) where {N,p,T}
-    B::typeofB = rational_lu(A, false, Modulo{2147483647,Int32})
+    B::typeofB = rational_lu(A, false, Modulo{p,Int32})
     issuccess(B) || Matrix{Rational{Int64}}(undef, 0, 0), false
     return dixon_p(Val(N), A, B, Y)
 end
 
 """
-    dixon_solve(::Val{N}, A, Y) where N
+    dixon_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) where N
 
 Specialized solver for the linear system `A*X = Y` where `A` is a sparse symmetric
 integer `n×n` matrix and `Y` is a dense integer `n×N` matrix, using Dixon's method.
 
-Return `X` as either a `Matrix{Rational{Int64}}` or a `Matrix{Rational{Int128}}` if one of
-the entries does not fit a `Rational{Int64}`.
+Return `X` as either a `Matrix{Rational{Int64}}`, a `Matrix{Rational{Int128}}` or a
+`Matrix{Rational{BigInt}}`, whichever smallest type can hold all its values.
 """
 function dixon_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) where N
     # @show time_ns()
     Z, success = try_modulo(Val(N), A, Y, Modulo{2147483647,Int32})
     success && @goto ret
-    @show "2"
     Z, success = try_modulo(Val(N), A, Y, Modulo{2147483629,Int32})
     success && @goto ret
-    @show "3"
     Z, success = try_modulo(Val(N), A, Y, Modulo{2147483587,Int32})
     success && @goto ret
     # The probability of this being required is *extremely* low
-    @show "4!"
     return rational_solve(Val(N), A, Y)
     @label ret
-    return hcat(zeros(eltype(Z), N), Z)::typeofZ
+    return Z
 end

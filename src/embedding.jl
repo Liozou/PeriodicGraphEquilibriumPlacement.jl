@@ -1,6 +1,10 @@
 # Main functions
 
-using PeriodicGraphs, Graphs, StaticArrays
+using PeriodicGraphs, Graphs
+using StaticArrays: SizedVector
+using LinearAlgebra: Adjoint
+
+_catzeros(::Val{N}, Z::Adjoint{T}) where {T,N} = hcat(zeros(T, N), Z)
 
 """
     equilibrium(g::PeriodicGraph)
@@ -33,5 +37,6 @@ function equilibrium(g::PeriodicGraph{N}) where N
         A[i,i] = -count
     end
 
-    return dixon_solve(Val(N), A[2:end,2:end], Y[2:end,:])
+    Z = dixon_solve(Val(N), A[2:end,2:end], Y[2:end,:])
+    return _catzeros(Val(N), Z')
 end
