@@ -1,6 +1,5 @@
 name: CompatHelper
 on:
-  schedule:
   workflow_dispatch:
 jobs:
   CompatHelper:
