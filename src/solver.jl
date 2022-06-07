@@ -13,7 +13,7 @@ using BigRationals
 
 function compat_lu(::Type{Tf}, B, maxvec, info) where Tf
     @static if VERSION < v"1.8-"
-        LU{Tf,SparseMatrixCSC{Tf,Int}}(B, Vector{BlasInt}(1:maxvec), convert(BlasInt, info))
+        LU{Tf,SparseMatrixCSC{Tf,Int}}(dropzeros!(B), Vector{BlasInt}(1:maxvec), convert(BlasInt, info))
     else
         LU{Tf,SparseMatrixCSC{Tf,Int},OneTo{Int}}(Tf.(B), 1:maxvec, info)
     end
@@ -21,7 +21,7 @@ end
 
 function compat_lu_convert(::Type{Tf}, B, maxvec, info) where Tf
     @static if VERSION < v"1.8-"
-        LU{Tf,SparseMatrixCSC{Tf,Int}}(Tf.(B), Vector{BlasInt}(1:maxvec), convert(BlasInt, info))
+        LU{Tf,SparseMatrixCSC{Tf,Int}}(Tf.(dropzeros!(B)), Vector{BlasInt}(1:maxvec), convert(BlasInt, info))
     else
         LU{Tf,SparseMatrixCSC{Tf,Int},OneTo{Int}}(Tf.(B), 1:maxvec, info)
     end
