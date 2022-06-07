@@ -1,6 +1,6 @@
 module PeriodicGraphEquilibriumPlacement
 
-export equilibrium
+export equilibrium, dixon_solve, rational_solve
 
 using PeriodicGraphs, SparseArrays
 
