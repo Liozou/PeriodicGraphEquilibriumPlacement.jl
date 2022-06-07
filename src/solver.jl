@@ -409,8 +409,8 @@ end
 """
     dixon_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) where N
 
-Specialized solver for the linear system `A*X = Y` where `A` is a sparse symmetric
-integer `n×n` matrix and `Y` is a dense integer `n×N` matrix, using Dixon's method.
+Specialized solver for the linear system `A*X = Y` where `A` is a sparse integer `n×n`
+matrix and `Y` is a dense integer `n×N` matrix, using Dixon's method.
 
 Return `X` as either a `Matrix{Rational{Int64}}`, a `Matrix{Rational{Int128}}` or a
 `Matrix{Rational{BigInt}}`, whichever smallest type can hold all its values.
