@@ -1,6 +1,6 @@
 using PeriodicGraphEquilibriumPlacement
 using Graphs, PeriodicGraphs, SparseArrays
-using Test, Random
+using Test, Random, LinearAlgebra
 
 function is_at_mean_position(g::PeriodicGraph{D}, poss, i) where D
     neighs = neighbors(g, i)
