@@ -40,3 +40,10 @@ The package also exposes a `rational_solve` function which solves the same syste
 a simpler LU decomposition approach. It serves as fallback to `dixon_solve` when Dixon's
 algorithm fails, but can also be used as-is with the same API. Its performance is in
 general lower than `dixon_solve`, often significantly so.
+
+See also:
+
+- [`PeriodicGraphs.jl`](https://github.com/Liozou/PeriodicGraphs.jl) for the
+  underlying library and the API of the `PeriodicGraph` type.
+- [CrystalNets.jl](https://github.com/coudertlab/CrystalNets.jl) for a dependent package
+  specialized on crystal nets.
