@@ -43,7 +43,7 @@ general lower than `dixon_solve`, often significantly so.
 
 See also:
 
-- [`PeriodicGraphs.jl`](https://github.com/Liozou/PeriodicGraphs.jl) for the
+- [PeriodicGraphs.jl](https://github.com/Liozou/PeriodicGraphs.jl) for the
   underlying library and the API of the `PeriodicGraph` type.
 - [CrystalNets.jl](https://github.com/coudertlab/CrystalNets.jl) for a dependent package
   specialized on crystal nets.
