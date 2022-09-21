@@ -255,7 +255,7 @@ function rational_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) w
         error("Singular exception while equilibrating. Is the graph connected?")
     end
     Z, check = linsolve!(B, Rational{BigInt}.(Y))
-    check || error("Singular exception on substitution. Please open an issue.")
+    check || error("Singular exception on substitution. Please report this error by opening an issue.")
     return Rational{Int128}.(Z)
     # Rational{Int64} is not enough for tep for instance.
 end
@@ -268,7 +268,7 @@ function copyuntil(j, oldZ, ::Type{T}) where T
         i == j && return Z
         Z[i] = oldZ[i]
     end
-    error("Invalid failure of _inner_dixon_p!, please report this error")
+    error("Invalid failure of _inner_dixon_p!. Please report this error by opening an issue.")
     return Z # Does not matter but just in case for type stability
 end
 
