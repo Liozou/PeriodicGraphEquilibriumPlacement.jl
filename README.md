@@ -34,7 +34,7 @@ julia> A * dixon_solve(Val(2), A, Y) == Y
 true
 ```
 
-(the first argument of `dixon_solve` must be `Val(size(Y)[2])`).
+The first argument of `dixon_solve` must be `Val(size(Y)[2])` and the second must be square.
 
 The package also exposes a `rational_solve` function which solves the same systems through
 a simpler LU decomposition approach. It serves as fallback to `dixon_solve` when Dixon's

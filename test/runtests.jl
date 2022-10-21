@@ -54,6 +54,6 @@ end
 
     A2 = sparse([1, 2, 4, 1, 2, 4, 1, 2, 4], [1, 1, 1, 2, 2, 2, 4, 4, 4], [-3, 1, 1, 1, -3, 1, 1, 1, -2], 4, 4)
     Y2 = [1 1; 0 2; 1 -1; 0 0];
-    @test isnothing(rational_solve(Val(2), A2, Y2))
-    @test isnothing(dixon_solve(Val(2), A2, Y2))
+    @test isempty(rational_solve(Val(2), A2, Y2))
+    @test isempty(dixon_solve(Val(2), A2, Y2))
 end

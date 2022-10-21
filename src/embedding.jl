@@ -18,6 +18,7 @@ is at the origin of the space.
 function equilibrium(g::PeriodicGraph{N}) where N
     n = nv(g)
     iszero(n) && return Matrix{Rational{Int64}}(undef, N, 0)
+    isone(n) && return zeros(Rational{Int64}, N, 1)
     Y = Matrix{Int}(undef, n, N)
     A = spzeros(Int, n, n)
     neigh = Vector{Int}(undef, n)
@@ -38,6 +39,6 @@ function equilibrium(g::PeriodicGraph{N}) where N
     end
 
     Z = dixon_solve(Val(N), A[2:end,2:end], Y[2:end,:])
-    Z isa Nothing && error("Singular exception while equilibrating. Is the graph connected and of the given dimensionality?")
+    isempty(Z) && error("Singular exception while equilibrating. Is the graph connected and of the given dimensionality?")
     return _catzeros(Val(N), Z')
 end
