@@ -80,7 +80,6 @@ function rational_lu!(B::SparseMatrixCSC{BigRational}, col_offset::Vector{Int}, 
     Tf = Rational{BigInt}
     m, n = size(B)
     minmn = min(m, n)
-    info = 0
     Bkkinv = BigRational()
     tmp = BigRational()
     @inbounds begin
@@ -116,7 +115,8 @@ function rational_lu!(B::SparseMatrixCSC{BigRational}, col_offset::Vector{Int}, 
             end
         end
     end
-    check && checknonsingular(info, Val(false))
+    info = something(findfirst(i -> iszero(B[i,i]), Base.OneTo(minmn)), 0)
+    check && compat_checknonsingular(info)
     return compat_lu_convert(Tf, B, minmn, info)
 end
 
