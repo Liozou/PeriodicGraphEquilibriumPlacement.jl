@@ -38,5 +38,6 @@ function equilibrium(g::PeriodicGraph{N}) where N
     end
 
     Z = dixon_solve(Val(N), A[2:end,2:end], Y[2:end,:])
+    Z isa Nothing && error("Singular exception while equilibrating. Is the graph connected and of the given dimensionality?")
     return _catzeros(Val(N), Z')
 end

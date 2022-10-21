@@ -10,6 +10,13 @@ using SparseArrays: getcolptr
 
 using BigRationals
 
+function compat_checknonsingular(i)
+    @static if VERSION < v"1.7-"
+        checknonsingular(i, Val(false))
+    else
+        checknonsingular(i, NoPivot())
+    end
+end
 
 function compat_lu(::Type{Tf}, B, maxvec, info) where Tf
     @static if VERSION < v"1.8-"
@@ -37,7 +44,7 @@ function rational_lu!(B::SparseMatrixCSC, col_offset::Vector{Int}, check=true)
             ipiv = getcolptr(B)[k] + col_offset[k]
             piv = nonzeros(B)[ipiv]
             if iszero(piv)
-                check && checknonsingular(k-1, Val(false)) # TODO update with Pivot
+                check && compat_checknonsingular(k-1) # TODO update with Pivot
                 return compat_lu(Tf, B, minmn, k-1)
             end
             Bkkinv = inv(piv)
@@ -63,7 +70,7 @@ function rational_lu!(B::SparseMatrixCSC, col_offset::Vector{Int}, check=true)
             end
         end
     end
-    check && checknonsingular(info, Val(false))
+    check && compat_checknonsingular(info)
     return compat_lu(Tf, B, minmn, info)
 end
 
@@ -81,7 +88,7 @@ function rational_lu!(B::SparseMatrixCSC{BigRational}, col_offset::Vector{Int}, 
             ipiv = getcolptr(B)[k] + col_offset[k]
             piv = nonzeros(B)[ipiv]
             if iszero(piv)
-                check && checknonsingular(k-1, Val(false)) # TODO update with Pivot
+                check && compat_checknonsingular(k-1) # TODO update with Pivot
                 return compat_lu_convert(Tf, B, minmn, k-1)
             end
             BigRationals.MPQ.inv!(Bkkinv, piv)
@@ -131,7 +138,7 @@ function rational_lu(A::SparseMatrixCSC, check::Bool=true, ::Type{Ti}=BigRationa
     m, n = size(A)
     minmn = min(m, n)
     if J[1] != 1 || I[1] != 1
-        check && checknonsingular(1, Val(false)) # TODO update with Pivot
+        check && compat_checknonsingular(1) # TODO update with Pivot
         # return LU{eltype(A), typeof(A)}(A, collect(1:minmn), convert(BlasInt, 1))
         return compat_lu_convert(Tf, A, minmn, 1)
     end
@@ -251,9 +258,7 @@ In general, it is slower than [`dixon_solve`](@ref).
 """
 function rational_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) where N
     B = rational_lu(A, false)
-    if !issuccess(B)
-        error("Singular exception while equilibrating. Is the graph connected?")
-    end
+    issuccess(B) || return nothing
     Z, check = linsolve!(B, Rational{BigInt}.(Y))
     check || error("Singular exception on substitution. Please report this error by opening an issue.")
     return Rational{Int128}.(Z)
