@@ -1,92 +1,16 @@
 using PeriodicGraphEquilibriumPlacement, PeriodicGraphs, LinearAlgebra, SparseArrays
+using SnoopPrecompile
 
-const primes = (2147483647, 2147483629, 2147483587)
-const modulo{P} = PeriodicGraphEquilibriumPlacement.Modulo{P, Int32}
-
-macro enforce(expr) # strong @assert
-    msg = string(expr)
-    return :($(esc(expr)) ? $(nothing) : throw(AssertionError($msg)))
-end
-
-
-function _precompile_()
-    # SparseArrays
-    @enforce precompile(Tuple{typeof(*),SparseArrays.SparseMatrixCSC{Int, Int},Matrix{Rational{BigInt}}})
-    @enforce precompile(Tuple{typeof(Base.copyto_unaliased!),IndexCartesian,SubArray{Int, 1, SparseArrays.SparseMatrixCSC{Int, Int}, Tuple{Int, Base.Slice{Base.OneTo{Int}}}, false},IndexLinear,Vector{Int}})
-    @enforce precompile(Tuple{typeof(Base.mightalias),SubArray{Int, 1, SparseArrays.SparseMatrixCSC{Int, Int}, Tuple{Int, Base.Slice{Base.OneTo{Int}}}, false},Vector{Int}})
-    @enforce precompile(Tuple{typeof(LinearAlgebra.mul!),Matrix{BigInt},SparseArrays.SparseMatrixCSC{Int, Int},Matrix{BigInt},Bool,Bool})
-    @enforce precompile(Tuple{typeof(SparseArrays.dimlub),Vector{Int}})
-    @enforce precompile(Tuple{typeof(SparseArrays.findnz),SparseArrays.SparseMatrixCSC{Int, Int}})
-    @enforce precompile(Tuple{typeof(SparseArrays.sparse_check_length),String,Vector{Int},Int,Type})
-    @enforce precompile(Tuple{typeof(SparseArrays.spzeros),Type{Int},Type{Int},Int,Int})
-    @enforce precompile(Tuple{typeof(getindex),SparseArrays.SparseMatrixCSC{Int, Int},UnitRange{Int},UnitRange{Int}})
-
-    # Modulos.jl
-    for P in primes
-        @enforce precompile(Tuple{typeof(SparseArrays.sparse),Vector{Int},Vector{Int},Vector{modulo{P}},Int,Int,Function})
-        @enforce precompile(Tuple{typeof(SparseArrays.sparse),Vector{Int},Vector{Int},Vector{modulo{P}},Int,Int,Function})
-        @enforce precompile(Tuple{typeof(-),modulo{P},modulo{P}})
-        @enforce precompile(Tuple{typeof(/),Int,modulo{P}})
-        @enforce precompile(Tuple{typeof(==),Matrix{modulo{P}},Matrix{Int}})
-        @enforce precompile(Tuple{typeof(Base._unsafe_copyto!),Matrix{modulo{P}},Int,Matrix{Int},Int,Int})
-        @enforce precompile(Tuple{typeof(Base._unsafe_getindex),IndexLinear,Matrix{modulo{P}},Int,Base.Slice{Base.OneTo{Int}}})
-        @enforce precompile(Tuple{typeof(Base.copyto_unaliased!),IndexLinear,SubArray{modulo{P}, 1, Matrix{modulo{P}}, Tuple{Int, Base.Slice{Base.OneTo{Int}}}, true},IndexLinear,Vector{modulo{P}}})
-        @enforce precompile(Tuple{typeof(LinearAlgebra.mul!),Matrix{modulo{P}},SparseArrays.SparseMatrixCSC{Int, Int},Matrix{modulo{P}},Bool,Bool})
-        @enforce precompile(Tuple{typeof(SparseArrays._setindex_scalar!),SparseArrays.SparseMatrixCSC{modulo{P}, Int},Int,Int,Int})
-        @enforce precompile(Tuple{typeof(SparseArrays.sparse!),Vector{Int},Vector{Int},Vector{modulo{P}},Int,Int,typeof(+),Vector{Int},Vector{Int},Vector{Int},Vector{modulo{P}},Vector{Int},Vector{Int},Vector{modulo{P}}})
-        @enforce precompile(Tuple{typeof(SparseArrays.sparse),Vector{Int},Vector{Int},Vector{modulo{P}},Int,Int,Function})
-        @enforce precompile(Tuple{typeof(SparseArrays.sparse_check_length),String,Vector{modulo{P}},Int,Type})
-        @enforce precompile(Tuple{typeof(getindex),SparseArrays.SparseMatrixCSC{modulo{P}, Int},UnitRange{Int},UnitRange{Int}})
-    end
-
-    # solver.jl
-    @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.rational_lu!), SparseMatrixCSC{Rational{BigInt},Int}, Vector{Int}, Bool})
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.rational_lu!), SparseMatrixCSC{Rational{BigInt},Int}, Vector{Int}})
-    for P in primes
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.rational_lu!), SparseMatrixCSC{modulo{P},Int}, Vector{Int}, Bool})
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.rational_lu!), SparseMatrixCSC{modulo{P},Int}, Vector{Int}})
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.rational_lu), SparseMatrixCSC{modulo{P},Int}, Bool, Type{modulo{P}}})
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.rational_lu), SparseMatrixCSC{modulo{P},Int}, Bool, Type{Rational{BigInt}}})
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.rational_lu), SparseMatrixCSC{Int,Int}, Bool})
-    end
-    for Ti in (Rational{BigInt}, (modulo{P} for P in primes)...)
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.forward_substitution!), SparseMatrixCSC{Ti,Int}, Matrix{Ti}})
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.backward_substitution!), SparseMatrixCSC{Ti,Int}, Matrix{Ti}})
-    end
-    @static if VERSION < v"1.8-"
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.linsolve!), LU{Rational{BigInt},SparseMatrixCSC{Rational{BigInt},Int}}, Matrix{Rational{BigInt}}})
-        for P in primes
-            @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.linsolve!), LU{modulo{P},SparseMatrixCSC{modulo{P},Int}}, Matrix{Int}})
-        end
-    else
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.linsolve!), LU{Rational{BigInt},SparseMatrixCSC{Rational{BigInt},Int},Base.OneTo{Int}}, Matrix{Rational{BigInt}}})
-        for P in primes
-            @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.linsolve!), LU{modulo{P},SparseMatrixCSC{modulo{P},Int},Base.OneTo{Int}}, Matrix{Int}})
-        end
-    end
-    for T in (Int64, Int128, BigInt)
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.copyuntil), Int, Matrix{Rational{T}}, Type{Rational{T}}})
-        @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement._inner_dixon_p!), Vector{Int}, Matrix{Rational{T}}, BigInt, Matrix{BigInt}, BigInt, BigInt})
-    end
-    for N in 1:3
-        @enforce precompile(Tuple{typeof(rational_solve), Val{N}, SparseMatrixCSC{Int,Int}, Matrix{Int}})
-        for P in primes
-            @static if VERSION < v"1.8-"
-                @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.dixon_p), Val{N}, SparseMatrixCSC{Int,Int}, LU{modulo{P},SparseMatrixCSC{modulo{P},Int}}, Matrix{Int}})
-            else
-                @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement.dixon_p), Val{N}, SparseMatrixCSC{Int,Int}, LU{modulo{P},SparseMatrixCSC{modulo{P},Int},Base.OneTo{Int}}, Matrix{Int}})
-            end
-        end
-        @enforce precompile(Tuple{typeof(dixon_solve), Val{N}, SparseMatrixCSC{Int,Int}, Matrix{Int}})
-    end
-
-    # embeddings.jl
-    for N in 1:3
-        for T in (Rational{Int64}, Rational{Int128}, Rational{BigInt})
-            @enforce precompile(Tuple{typeof(PeriodicGraphEquilibriumPlacement._catzeros), Val{N}, Adjoint{T,Matrix{T}}})
-        end
-        @enforce precompile(Tuple{typeof(equilibrium), PeriodicGraph{N}})
+@precompile_setup begin
+    pcu = PeriodicGraph("3 1 1 0 0 1 1 1 0 1 0 1 1 1 0 0");
+    afy = PeriodicGraph("3 1 2 0 0 0 1 3 0 0 0 1 4 0 0 0 1 5 0 0 0 2 6 0 0 0 2 7 0 0 0 2 8 0 0 0 3 7 0 0 0 3 9 0 0 0 3 10 0 0 0 4 8 0 0 0 4 9 0 0 0 4 11 0 0 0 5 7 0 1 0 5 8 0 1 0 5 9 0 1 0 6 12 0 0 0 6 13 0 0 0 6 14 0 0 0 7 14 0 0 0 8 15 0 0 0 9 12 -1 0 1 10 12 -1 0 1 10 13 -1 0 1 10 15 0 0 1 11 13 -1 0 0 11 14 -1 0 0 11 15 0 0 0 12 16 0 0 0 13 16 0 1 0 14 16 0 0 0 15 16 -1 0 0")
+    A = sparse([208 72 887 687 946 263 905 943 131 183 256 606 613 854 914; 582 279 104 638 1 272 130 214 910 813 376 376 202 362 384; 786 526 26 700 84 417 430 253 894 41 895 207 620 918 163; 753 98 421 556 839 665 861 678 614 245 548 186 831 774 642; 834 257 952 786 485 529 66 833 619 258 886 901 488 55 87; 917 536 333 316 295 528 645 777 236 4 247 641 411 101 262; 394 87 654 584 354 858 361 570 990 326 279 348 984 623 251; 774 33 215 61 577 492 634 769 755 577 176 989 964 379 104; 176 21 886 253 198 886 545 136 958 175 311 646 954 730 927; 654 216 757 545 975 391 56 480 258 861 639 126 53 295 739; 29 619 956 175 693 567 734 415 645 704 818 291 678 557 973; 964 112 555 991 366 297 105 482 26 848 221 687 50 53 119; 155 938 591 60 807 704 157 929 289 128 846 971 31 658 530; 736 711 941 890 816 473 171 60 299 167 434 819 582 913 856; 668 14 20 336 336 823 651 164 468 737 181 828 192 93 58])
+    Y = [15*j + i for i in 1:15, j in -1:1]
+    v = Val(3)
+    @precompile_all_calls begin
+        equilibrium(pcu)
+        equilibrium(afy)
+        dixon_solve(v, A, Y)
+        rational_solve(v, A, Y)
     end
 end
-
-_precompile_()
