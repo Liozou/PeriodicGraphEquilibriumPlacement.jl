@@ -74,6 +74,72 @@ function rational_lu!(B::SparseMatrixCSC, col_offset::Vector{Int}, check=true)
     return compat_lu(Tf, B, minmn, info)
 end
 
+@static if VERSION < v"1.10-"
+    const libgmp = Sys.iswindows() ? "libgmp-10.dll" : Sys.isapple() ? "@rpath/libgmp.10.dylib" : "libgmp.so.10"
+else
+    const libgmp = Base.GMP.libgmp
+end
+
+@static if VERSION < v"1.9-"
+    # Base.GMP.MPQ.mul!, div! and sub! introduced in v1.9
+    const MPQ = Base.GMP.MPQ
+
+    function set_si!(z::Rational{BigInt}, a, b)
+        zq = MPQ._MPQ(z)
+        ccall((:__gmpq_set_si, libgmp), Cvoid, (MPQ.mpq_t, Clong, Culong), zq, a, b)
+        return MPQ.sync_rational!(zq)
+    end
+    function mpq_sub!(x::Rational{BigInt}, y::Rational{BigInt})
+        if iszero(x.den) || iszero(y.den)
+            if iszero(x.den) && iszero(y.den) && isneg(x.num) == isneg(y.num)
+                throw(DivideError())
+            end
+            iszero(x.den) && return x
+            return set_si!(x, flipsign(-1, y.num), 0)
+        end
+        xq = MPQ._MPQ(x)
+        ccall((:__gmpq_sub, libgmp), Cvoid,
+            (MPQ.mpq_t,MPQ.mpq_t,MPQ.mpq_t), xq, xq, MPQ._MPQ(y))
+        return MPQ.sync_rational!(xq)
+    end
+    function mpq_mul!(z::Rational{BigInt}, x::Rational{BigInt}, y::Rational{BigInt})
+        if iszero(x.den) || iszero(y.den)
+            if iszero(x.num) || iszero(y.num)
+                throw(DivideError())
+            end
+            return set_si!(z, ifelse(xor(isneg(x.num), isneg(y.num)), -1, 1), 0)
+        end
+        zq = MPQ._MPQ(z)
+        ccall((:__gmpq_mul, libgmp), Cvoid,
+              (MPQ.mpq_t,MPQ.mpq_t,MPQ.mpq_t), zq, MPQ._MPQ(x), MPQ._MPQ(y))
+        return MPQ.sync_rational!(zq)
+    end
+    function mpq_div!(x::Rational{BigInt}, y::Rational{BigInt})
+        if iszero(x.den)
+            if iszero(y.den)
+                throw(DivideError())
+            end
+            isneg(y.num) || return x
+            return set_si!(x, flipsign(-1, x.num), 0)
+        elseif iszero(y.den)
+            return set_si!(x, 0, 1)
+        elseif iszero(y.num)
+            if iszero(x.num)
+                throw(DivideError())
+            end
+            return set_si!(x, flipsign(1, x.num), 0)
+        end
+        xq = Base.GMP.MPQ._MPQ(x)
+        ccall((:__gmpq_div, libgmp), Cvoid,
+              (Base.GMP.MPQ.mpq_t,Base.GMP.MPQ.mpq_t,Base.GMP.MPQ.mpq_t), xq, xq, Base.GMP.MPQ._MPQ(y))
+        return Base.GMP.MPQ.sync_rational!(xq)
+    end
+else
+    const mpq_div! = Base.GMP.MPQ.div!
+    const mpq_mul! = Base.GMP.MPQ.mul!
+    const mpq_sub! = Base.GMP.MPQ.sub!
+end
+
 # function lu!(B::SparseMatrixCSC{<:Rational}, ::Val{Pivot} = Val(false);
 #                            col_offset, check::Bool = true) where Pivot
 function rational_lu!(B::SparseMatrixCSC{Rational{BigInt}}, col_offset::Vector{Int}, check::Bool=true)
@@ -90,7 +156,7 @@ function rational_lu!(B::SparseMatrixCSC{Rational{BigInt}}, col_offset::Vector{I
                 return compat_lu_convert(Tf, B, minmn, k-1)
             end
             for i in ipiv+1:getcolptr(B)[k+1]-1
-                Base.GMP.MPQ.div!(nonzeros(B)[i], piv)
+                mpq_div!(nonzeros(B)[i], piv)
                 # BigRationals.MPQ.div!(nonzeros(B)[i], piv)
             end
             for j in k+1:n
@@ -106,8 +172,8 @@ function rational_lu!(B::SparseMatrixCSC{Rational{BigInt}}, col_offset::Vector{I
                     while rowvals(B)[l+r] < rowvals(B)[i]
                         r += 1
                     end
-                    Base.GMP.MPQ.mul!(tmp, Bik, Bkj)
-                    Base.GMP.MPQ.sub!(nonzeros(B)[l+r], tmp)
+                    mpq_mul!(tmp, Bik, Bkj)
+                    mpq_sub!(nonzeros(B)[l+r], tmp)
                     # BigRationals.MPQ.mul!(tmp, Bik, Bkj)
                     # BigRationals.MPQ.sub!(nonzeros(B)[l+r], tmp)
                 end
