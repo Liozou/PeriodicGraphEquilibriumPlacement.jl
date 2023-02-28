@@ -8,7 +8,7 @@ using LinearAlgebra: BlasInt, checknonsingular, LU, tril!, triu!, issuccess, nor
 using SparseArrays
 using SparseArrays: getcolptr
 
-using BigRationals
+# using BigRationals
 
 function compat_checknonsingular(i)
     @static if VERSION < v"1.7-"
@@ -76,12 +76,11 @@ end
 
 # function lu!(B::SparseMatrixCSC{<:Rational}, ::Val{Pivot} = Val(false);
 #                            col_offset, check::Bool = true) where Pivot
-function rational_lu!(B::SparseMatrixCSC{BigRational}, col_offset::Vector{Int}, check::Bool=true)
+function rational_lu!(B::SparseMatrixCSC{Rational{BigInt}}, col_offset::Vector{Int}, check::Bool=true)
     Tf = Rational{BigInt}
     m, n = size(B)
     minmn = min(m, n)
-    Bkkinv = BigRational()
-    tmp = BigRational()
+    tmp = Rational{BigInt}(0)
     @inbounds begin
         for k in 1:minmn
             ipiv = getcolptr(B)[k] + col_offset[k]
@@ -90,9 +89,9 @@ function rational_lu!(B::SparseMatrixCSC{BigRational}, col_offset::Vector{Int}, 
                 check && compat_checknonsingular(k-1) # TODO update with Pivot
                 return compat_lu_convert(Tf, B, minmn, k-1)
             end
-            BigRationals.MPQ.inv!(Bkkinv, piv)
-            @simd for i in ipiv+1:getcolptr(B)[k+1]-1
-                BigRationals.MPQ.mul!(nonzeros(B)[i], Bkkinv)
+            for i in ipiv+1:getcolptr(B)[k+1]-1
+                Base.GMP.MPQ.div!(nonzeros(B)[i], piv)
+                # BigRationals.MPQ.div!(nonzeros(B)[i], piv)
             end
             for j in k+1:n
                 r1 = getcolptr(B)[j]
@@ -107,10 +106,10 @@ function rational_lu!(B::SparseMatrixCSC{BigRational}, col_offset::Vector{Int}, 
                     while rowvals(B)[l+r] < rowvals(B)[i]
                         r += 1
                     end
-                    # Base.GMP.MPZ.mul!(tmp, Bik, Bkj)
-                    # Base.GMP.MPZ.sub!(nonzeros(B)[l+r], tmp)
-                    BigRationals.MPQ.mul!(tmp, Bik, Bkj)
-                    BigRationals.MPQ.sub!(nonzeros(B)[l+r], tmp)
+                    Base.GMP.MPQ.mul!(tmp, Bik, Bkj)
+                    Base.GMP.MPQ.sub!(nonzeros(B)[l+r], tmp)
+                    # BigRationals.MPQ.mul!(tmp, Bik, Bkj)
+                    # BigRationals.MPQ.sub!(nonzeros(B)[l+r], tmp)
                 end
             end
         end
@@ -121,8 +120,9 @@ function rational_lu!(B::SparseMatrixCSC{BigRational}, col_offset::Vector{Int}, 
 end
 
 # function lu(A::SparseMatrixCSC{<:Rational}, pivot::Union{Val{false}, Val{true}} = Val(false); check::Bool = true)
-function rational_lu(A::SparseMatrixCSC, check::Bool=true, ::Type{Ti}=BigRational) where {Ti}
-    Tf = Ti == BigRational ? Rational{BigInt} : Ti
+function rational_lu(A::SparseMatrixCSC, check::Bool=true, ::Type{Ti}=Rational{BigInt}) where {Ti}
+    Tf = Ti
+    # Tf = Ti == BigRational ? Rational{BigInt} : Ti
 
     Base.require_one_based_indexing(A)
     _I, _J, _V = findnz(A)
@@ -265,6 +265,12 @@ function rational_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) w
     issuccess(B) || return Matrix{Rational{Int128}}(undef, 0, 0)
     Z, check = linsolve!(B, Rational{BigInt}.(Y))
     check || error("Singular exception on substitution. Please report this error by opening an issue.")
+    for x in Z
+        if numerator(x) > typemax(Int128) || numerator(x) < typemin(Int128) ||
+           denominator(x) > typemax(Int128) || denominator(x) < typemin(Int128)
+            return Z
+        end
+    end
     return Rational{Int128}.(Z)
     # Rational{Int64} is not enough for tep for instance.
 end
@@ -433,13 +439,11 @@ Return an empty matrix if `A` is not invertible.
 function dixon_solve(::Val{N}, A::SparseMatrixCSC{Int,Int}, Y::Matrix{Int}) where N
     # @show time_ns()
     Z, success = try_modulo(Val(N), A, Y, Modulo{2147483647,Int32})
-    success && @goto ret
+    success && return Z
     Z, success = try_modulo(Val(N), A, Y, Modulo{2147483629,Int32})
-    success && @goto ret
+    success && return Z
     Z, success = try_modulo(Val(N), A, Y, Modulo{2147483587,Int32})
-    success && @goto ret
+    success && return Z
     # The probability of this being required is *extremely* low
     return rational_solve(Val(N), A, Y)
-    @label ret
-    return Z
 end
